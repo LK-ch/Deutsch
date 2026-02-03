@@ -73,6 +73,19 @@
   .heart.lost { opacity:.25; transform:scale(.85); }
   .score-num { font-family:'Fredoka',sans-serif; font-size:1.2rem; font-weight:600; color:#ffd93d; }
 
+  /* ─── back button ─── */
+  .back-btn {
+    display:flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+    border-radius:10px; padding:6px 12px;
+    color:rgba(255,255,255,.7); font-size:.82rem; font-weight:700;
+    font-family:'Nunito',sans-serif;
+    text-decoration:none; cursor:pointer;
+    transition:background .2s, border-color .2s, color .2s;
+  }
+  .back-btn:hover { background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.35); color:#fff; }
+  .back-btn:active { transform:scale(.96); }
+
   /* ─── main wrap ─── */
   .game-wrap { position:relative; z-index:5; max-width:780px; margin:22px auto 0; padding:0 16px; }
 
@@ -267,6 +280,7 @@
 <!-- HUD -->
 <div class="hud">
   <div class="hud-left">
+    <a href="index.html" class="back-btn">← Zurück</a>
     <div class="level-badge" id="levelBadge">Runde 1</div>
     <div class="streak-badge" id="streakBadge">🔥 ×1</div>
   </div>
