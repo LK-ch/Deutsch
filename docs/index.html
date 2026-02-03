@@ -1,1 +1,282 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wortarten & Pronomen – Lernspiele</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
 
+  :root {
+    --sky-top:   #1a1a2e;
+    --sky-bot:   #16213e;
+    --ground:    #0f3460;
+    --ground2:   #1a4a7a;
+    --card-bg:   rgba(255,255,255,.07);
+    --card-bdr:  rgba(255,255,255,.12);
+    --text:      #fff;
+    --text-dim:  rgba(255,255,255,.55);
+    --c-verb:    #ff6b6b;
+    --c-nomen:   #ffd93d;
+    --c-adj:     #6bcb77;
+    --c-pron:    #4d96ff;
+    --c-part:    #c77dff;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family:'Nunito', sans-serif;
+    min-height:100vh;
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bot) 55%, var(--ground) 55%, var(--ground2) 100%);
+    color:var(--text);
+    overflow-x:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  /* ─── stars ─── */
+  .stars { position:fixed; inset:0; pointer-events:none; z-index:0; }
+  .star { position:absolute; background:#fff; border-radius:50%; animation:twinkle var(--dur) ease-in-out infinite alternate; }
+  @keyframes twinkle { to{opacity:.15} }
+
+  /* ─── clouds ─── */
+  .cloud { position:absolute; background:rgba(255,255,255,.07); border-radius:999px; filter:blur(2px); animation:drift var(--spd) linear infinite; }
+  @keyframes drift { from{transform:translateX(-120%)} to{transform:translateX(110vw)} }
+
+  /* ─── ground ─── */
+  .ground-deco { position:fixed; bottom:0; left:0; right:0; height:80px; pointer-events:none; z-index:3; }
+  .tree { position:absolute; bottom:0; }
+
+  /* ─── mascot ─── */
+  .mascot-wrap {
+    position:fixed; bottom:0; right:30px; width:110px; height:130px;
+    z-index:4; pointer-events:none;
+    animation:bob 2.2s ease-in-out infinite;
+  }
+  .mascot-wrap svg { width:100%; height:100%; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+
+  /* ─── content ─── */
+  .content {
+    position:relative; z-index:5;
+    width:100%; max-width:700px;
+    padding:56px 22px 140px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+  /* ─── hero ─── */
+  .hero { text-align:center; margin-bottom:48px; }
+
+  .hero-badge {
+    display:inline-block;
+    background:rgba(255,255,255,.08); border:1px solid var(--card-bdr);
+    border-radius:20px; padding:5px 16px;
+    font-size:.74rem; text-transform:uppercase; letter-spacing:2px;
+    color:var(--text-dim); margin-bottom:18px;
+  }
+
+  .hero h1 {
+    font-family:'Fredoka', sans-serif;
+    font-size: clamp(2.1rem, 5.8vw, 3.1rem);
+    font-weight:700; line-height:1.15;
+    background: linear-gradient(135deg, #ffd93d 0%, #ff9f43 35%, #ff6b6b 65%, #c77dff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero p {
+    margin-top:16px; font-size:1.02rem;
+    color:var(--text-dim); max-width:460px;
+    margin-left:auto; margin-right:auto; line-height:1.6;
+  }
+
+  /* pills */
+  .pills { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:22px; }
+  .pill {
+    border-radius:20px; padding:4px 14px;
+    font-size:.77rem; font-weight:700;
+    border:1.5px solid;
+  }
+
+  /* ─── game cards ─── */
+  .cards { display:flex; flex-direction:column; gap:16px; width:100%; }
+
+  .game-card {
+    background:var(--card-bg); border:1px solid var(--card-bdr);
+    backdrop-filter:blur(10px);
+    border-radius:22px; padding:24px 22px;
+    display:flex; align-items:center; gap:20px;
+    text-decoration:none; color:inherit;
+    transition:transform .22s, box-shadow .25s, border-color .25s;
+    position:relative; overflow:hidden;
+  }
+  .game-card::before {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg, var(--glow) 0%, transparent 55%);
+    opacity:0; transition:opacity .3s; pointer-events:none;
+  }
+  .game-card:hover {
+    transform:translateY(-3px);
+    border-color:rgba(255,255,255,.3);
+    box-shadow:0 10px 36px rgba(0,0,0,.32);
+  }
+  .game-card:hover::before { opacity:1; }
+  .game-card:active { transform:translateY(-1px); }
+
+  .game-card.glow-word { --glow: rgba(255,107,107,.13); }
+  .game-card.glow-sort { --glow: rgba(77,150,255,.13); }
+
+  /* icon */
+  .card-icon-wrap {
+    width:64px; height:64px; border-radius:17px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.9rem; border:2px solid;
+    position:relative; z-index:1;
+  }
+
+  /* body */
+  .card-body { position:relative; z-index:1; flex:1; min-width:0; }
+  .card-tag {
+    display:inline-block; border-radius:12px; padding:2px 10px;
+    font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+    margin-bottom:5px;
+  }
+  .card-body h2 { font-family:'Fredoka',sans-serif; font-size:1.3rem; font-weight:600; margin-bottom:3px; }
+  .card-body p { font-size:.87rem; color:var(--text-dim); line-height:1.5; }
+
+  /* arrow */
+  .card-arrow {
+    position:relative; z-index:1;
+    width:38px; height:38px; border-radius:12px;
+    background:rgba(255,255,255,.07); border:1px solid var(--card-bdr);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.15rem; flex-shrink:0;
+    transition:background .2s, transform .2s;
+  }
+  .game-card:hover .card-arrow { background:rgba(255,255,255,.15); transform:translateX(4px); }
+
+  /* ─── bottom hint ─── */
+  .bottom-hint {
+    margin-top:34px; text-align:center;
+    font-size:.82rem; color:var(--text-dim); line-height:1.6;
+  }
+  .bottom-hint kbd {
+    background:rgba(255,255,255,.1); border:1px solid var(--card-bdr);
+    border-radius:6px; padding:2px 8px;
+    font-family:'Nunito',sans-serif; font-size:.82rem; color:var(--text-dim);
+  }
+
+  /* ─── responsive ─── */
+  @media(max-width:500px){
+    .game-card { flex-direction:column; text-align:center; gap:12px; padding:22px 18px; }
+    .card-arrow { display:none; }
+    .mascot-wrap { width:78px; height:95px; right:12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- stars -->
+<div class="stars" id="stars"></div>
+
+<!-- ground trees -->
+<div class="ground-deco">
+  <svg class="tree" style="left:6%;width:60px;" viewBox="0 0 60 90"><rect x="24" y="55" width="12" height="35" fill="#8B5E3C"/><polygon points="30,0 5,55 55,55" fill="#2d6a4f"/></svg>
+  <svg class="tree" style="left:18%;width:42px;" viewBox="0 0 60 90"><rect x="24" y="55" width="12" height="35" fill="#8B5E3C"/><polygon points="30,5 8,55 52,55" fill="#2d6a4f"/></svg>
+  <svg class="tree" style="right:10%;width:55px;" viewBox="0 0 60 90"><rect x="24" y="55" width="12" height="35" fill="#8B5E3C"/><polygon points="30,0 6,55 54,55" fill="#2d6a4f"/></svg>
+  <svg class="tree" style="right:25%;width:38px;" viewBox="0 0 60 90"><rect x="24" y="55" width="12" height="35" fill="#8B5E3C"/><polygon points="30,8 10,55 50,55" fill="#2d6a4f"/></svg>
+</div>
+
+<!-- mascot (always happy on index) -->
+<div class="mascot-wrap">
+  <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="50" cy="85" rx="28" ry="32" fill="#4d96ff"/>
+    <circle cx="50" cy="42" r="26" fill="#4d96ff"/>
+    <ellipse cx="30" cy="22" rx="7" ry="11" fill="#3a7bd5" transform="rotate(-15 30 22)"/>
+    <ellipse cx="70" cy="22" rx="7" ry="11" fill="#3a7bd5" transform="rotate(15 70 22)"/>
+    <ellipse cx="50" cy="48" rx="18" ry="14" fill="#fff" opacity=".15"/>
+    <path d="M38 43 Q41 40 44 43" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M56 43 Q59 40 62 43" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M44 54 Q50 58 56 54" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".8"/>
+    <line x1="24" y1="78" x2="8"  y2="92" stroke="#3a7bd5" stroke-width="6" stroke-linecap="round"/>
+    <line x1="76" y1="78" x2="92" y2="92" stroke="#3a7bd5" stroke-width="6" stroke-linecap="round"/>
+    <rect x="38" y="112" width="8" height="10" rx="4" fill="#3a7bd5"/>
+    <rect x="54" y="112" width="8" height="10" rx="4" fill="#3a7bd5"/>
+  </svg>
+</div>
+
+<!-- ─── MAIN ─── -->
+<div class="content">
+
+  <!-- hero -->
+  <div class="hero">
+    <div class="hero-badge">📚 Deutsch-Lernspiele</div>
+    <h1>Wortarten &amp;<br>Pronomen</h1>
+    <p>Zwei Spiele, um Wortarten zu kennen und Pronomen zu meistern — sortiere, rate und sammle Punkte!</p>
+    <div class="pills">
+      <span class="pill" style="color:var(--c-verb);  border-color:var(--c-verb)">Verben</span>
+      <span class="pill" style="color:var(--c-nomen); border-color:var(--c-nomen)">Nomen</span>
+      <span class="pill" style="color:var(--c-adj);   border-color:var(--c-adj)">Adjektive</span>
+      <span class="pill" style="color:var(--c-pron);  border-color:var(--c-pron)">Pronomen</span>
+      <span class="pill" style="color:var(--c-part);  border-color:var(--c-part)">Partikeln</span>
+    </div>
+  </div>
+
+  <!-- game cards -->
+  <div class="cards">
+
+    <!-- Spiel 1 → Wortarten.html -->
+    <a href="Wortarten.html" class="game-card glow-word">
+      <div class="card-icon-wrap" style="background:rgba(255,107,107,.12); border-color:var(--c-verb);">🎮</div>
+      <div class="card-body">
+        <div class="card-tag" style="background:rgba(255,107,107,.15); color:var(--c-verb);">Spiel 1</div>
+        <h2>Wortarten-Abenteuer</h2>
+        <p>Ein Wort in einem Satz ist markiert — bestimme die richtige Wortart. Mit Streak, Leben und Levels.</p>
+      </div>
+      <div class="card-arrow">→</div>
+    </a>
+
+    <!-- Spiel 2 → sortieren.html -->
+    <a href="sortieren.html" class="game-card glow-sort">
+      <div class="card-icon-wrap" style="background:rgba(77,150,255,.12); border-color:var(--c-pron);">🧩</div>
+      <div class="card-body">
+        <div class="card-tag" style="background:rgba(77,150,255,.15); color:var(--c-pron);">Spiel 2</div>
+        <h2>Pronomen-Sortierung</h2>
+        <p>Ordne Pronomen den sieben Kategorien zu per Drag &amp; Drop. Falsche Zuordnungen können korrigiert werden.</p>
+      </div>
+      <div class="card-arrow">→</div>
+    </a>
+
+  </div>
+
+  <!-- hint -->
+  <div class="bottom-hint">
+    💡 Wörter mit einem <kbd>★</kbd> im Sortierungsspiel passen in mehrere Kategorien
+  </div>
+
+</div>
+
+<!-- ─── ambient JS ─── -->
+<script>
+(function(){
+  const sc = document.getElementById('stars');
+  for(let i=0; i<70; i++){
+    const s = document.createElement('div'); s.className='star';
+    const sz = Math.random()*2.5+1;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*50}%;left:${Math.random()*100}%;opacity:${Math.random()*.8+.2};--dur:${Math.random()*2+1.5}s`;
+    sc.appendChild(s);
+  }
+  for(let i=0; i<4; i++){
+    const c = document.createElement('div'); c.className='cloud';
+    const h = Math.random()*60+30;
+    c.style.cssText = `top:${Math.random()*40+5}%;height:${h}px;width:${h*2.8}px;--spd:${Math.random()*30+25}s;animation-delay:-${Math.random()*20}s`;
+    document.body.appendChild(c);
+  }
+})();
+</script>
+</body>
+</html>
