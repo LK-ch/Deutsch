@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wortarten-Abenteuer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --sky-top:   #1a1a2e;
+    --sky-bot:   #16213e;
+    --ground:    #0f3460;
+    --ground2:   #1a4a7a;
+    --card-bg:   rgba(255,255,255,.07);
+    --card-bdr: rgba(255,255,255,.12);
+    --text:      #fff;
+    --text-dim:  rgba(255,255,255,.55);
+
+    --c-verb:    #ff6b6b;
+    --c-nomen:   #ffd93d;
+    --c-adj:     #6bcb77;
+    --c-pron:    #4d96ff;
+    --c-part:    #c77dff;
+
+    --heart:     #ff4757;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family:'Nunito', sans-serif;
+    min-height:100vh;
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bot) 55%, var(--ground) 55%, var(--ground2) 100%);
+    color:var(--text);
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* ─── stars ─── */
+  .stars { position:fixed; inset:0; pointer-events:none; z-index:0; }
+  .star {
+    position:absolute; background:#fff; border-radius:50%;
+    animation:twinkle var(--dur) ease-in-out infinite alternate;
+  }
+  @keyframes twinkle { to { opacity:.15; } }
+
+  /* ─── floating clouds ─── */
+  .cloud {
+    position:absolute; background:rgba(255,255,255,.07);
+    border-radius:999px; filter:blur(2px);
+    animation:drift var(--spd) linear infinite;
+  }
+  @keyframes drift { from{transform:translateX(-120%)} to{transform:translateX(110vw)} }
+
+  /* ─── HUD ─── */
+  .hud {
+    position:relative; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 22px;
+    background: rgba(0,0,0,.35);
+    backdrop-filter:blur(6px);
+  }
+  .hud-left { display:flex; align-items:center; gap:18px; }
+  .hud-right { display:flex; align-items:center; gap:14px; }
+
+  .streak-badge {
+    background:rgba(255,107,107,.18); border:1px solid rgba(255,107,107,.4);
+    border-radius:20px; padding:4px 12px;
+    font-size:.82rem; font-weight:700; color:#ff6b6b;
+    opacity:0; transition:opacity .3s;
+  }
+  .streak-badge.show { opacity:1; }
+
+  .level-badge {
+    font-family:'Fredoka',sans-serif;
+    background:linear-gradient(135deg,#ffd93d,#ffb347);
+    color:#1a1a2e; border-radius:20px; padding:4px 14px;
+    font-size:.9rem; font-weight:600;
+  }
+
+  .hearts { display:flex; gap:4px; }
+  .heart { font-size:1.3rem; transition:transform .2s; }
+  .heart.lost { opacity:.25; transform:scale(.85); }
+
+  .score-num {
+    font-family:'Fredoka',sans-serif; font-size:1.2rem; font-weight:600;
+    color:#ffd93d;
+  }
+
+  /* ─── main card ─── */
+  .game-wrap {
+    position:relative; z-index:5;
+    max-width:680px; margin:28px auto 0; padding:0 18px;
+  }
+
+  .sentence-card {
+    background:var(--card-bg); border:1px solid var(--card-bdr);
+    backdrop-filter:blur(8px);
+    border-radius:24px; padding:28px 24px 22px;
+    text-align:center;
+  }
+
+  .prompt-label {
+    font-size:.78rem; text-transform:uppercase; letter-spacing:2px;
+    color:var(--text-dim); margin-bottom:14px;
+  }
+
+  .sentence {
+    font-size:1.25rem; line-height:1.9; font-weight:600;
+    word-spacing:4px;
+  }
+  .sentence .w { display:inline-block; }
+
+  /* highlighted target word */
+  .sentence .w.target {
+    background:linear-gradient(135deg,#ffd93d,#ffb347);
+    color:#1a1a2e;
+    border-radius:10px; padding:2px 14px;
+    animation:pop .4s cubic-bezier(.34,1.56,.64,1) both;
+    box-shadow: 0 4px 16px rgba(255,217,61,.35);
+  }
+  @keyframes pop { 0%{transform:scale(.7);opacity:0} 100%{transform:scale(1);opacity:1} }
+
+  .question-text {
+    margin-top:18px; font-size:.92rem; color:var(--text-dim);
+  }
+  .question-text strong { color:#fff; }
+
+  /* ─── answer buttons ─── */
+  .answers {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:10px; margin-top:20px;
+  }
+  .ans-btn {
+    border:2px solid var(--card-bdr);
+    background:var(--card-bg);
+    backdrop-filter:blur(4px);
+    color:#fff; border-radius:14px;
+    padding:14px 10px; font-size:1rem; font-weight:700;
+    font-family:'Nunito',sans-serif;
+    cursor:pointer;
+    transition:transform .15s, box-shadow .2s, border-color .2s, background .2s;
+    display:flex; align-items:center; gap:10px;
+    user-select:none;
+  }
+  .ans-btn:hover {
+    transform:translateY(-2px);
+    border-color:rgba(255,255,255,.35);
+    box-shadow:0 6px 20px rgba(0,0,0,.25);
+  }
+  .ans-btn:active { transform:translateY(0); }
+
+  .ans-btn .cat-icon {
+    width:32px; height:32px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem; flex-shrink:0;
+  }
+  .ans-btn .cat-label { text-align:left; line-height:1.2; }
+  .ans-btn .cat-label .cat-name { font-size:.95rem; }
+  .ans-btn .cat-label .cat-hint { font-size:.72rem; opacity:.55; font-weight:400; }
+
+  /* answer states */
+  .ans-btn.correct {
+    border-color:#6bcb77; background:rgba(107,203,119,.2);
+    animation:bounce .4s ease;
+  }
+  .ans-btn.wrong {
+    border-color:#ff6b6b; background:rgba(255,107,107,.18);
+    animation:shake .35s ease;
+  }
+  .ans-btn.disabled { pointer-events:none; opacity:.4; }
+  .ans-btn.reveal   { border-color:#6bcb77; background:rgba(107,203,119,.15); opacity:1 !important; }
+
+  @keyframes bounce { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
+  @keyframes shake  { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+
+  /* ─── feedback overlay text ─── */
+  .feedback {
+    position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+    font-family:'Fredoka',sans-serif; font-size:1.6rem; font-weight:700;
+    pointer-events:none; z-index:20;
+    opacity:0; white-space:nowrap;
+    animation:feedUp .7s ease forwards;
+  }
+  .feedback.good { color:#6bcb77; }
+  .feedback.bad  { color:#ff6b6b; }
+  @keyframes feedUp { 0%{opacity:1;transform:translate(-50%,0)} 100%{opacity:0;transform:translate(-50%,-40px)} }
+
+  /* ─── character (little mascot SVG) ─── */
+  .mascot-wrap {
+    position:absolute; bottom:0; right:30px; width:110px; height:130px;
+    z-index:4; pointer-events:none;
+  }
+  .mascot-wrap svg { width:100%; height:100%; }
+  .mascot-wrap.happy .eyes-neutral { display:none; }
+  .mascot-wrap.happy .eyes-happy   { display:block; }
+  .mascot-wrap.sad   .eyes-neutral { display:none; }
+  .mascot-wrap.sad   .eyes-sad     { display:block; }
+  .mascot-wrap .eyes-happy, .mascot-wrap .eyes-sad { display:none; }
+
+  /* idle bob */
+  .mascot-wrap { animation:bob 2.2s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+
+  /* ─── ground decorations ─── */
+  .ground-deco {
+    position:fixed; bottom:0; left:0; right:0; height:80px;
+    pointer-events:none; z-index:3;
+  }
+  .tree {
+    position:absolute; bottom:0;
+  }
+  .tree-trunk { fill:#8B5E3C; }
+  .tree-top   { fill:#2d6a4f; }
+
+  /* ─── confetti canvas ─── */
+  #confetti { position:fixed; inset:0; pointer-events:none; z-index:50; }
+
+  /* ─── game-over screen ─── */
+  .overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.7);
+    display:none; align-items:center; justify-content:center;
+    z-index:100; backdrop-filter:blur(4px);
+  }
+  .overlay.show { display:flex; }
+  .overlay-card {
+    background:#1e2235; border:1px solid rgba(255,255,255,.15);
+    border-radius:28px; padding:46px 40px; text-align:center;
+    max-width:420px; width:90%;
+    animation:scaleIn .35s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes scaleIn { from{transform:scale(.8);opacity:0} to{transform:scale(1);opacity:1} }
+  .overlay-card h2 { font-family:'Fredoka',sans-serif; font-size:2rem; margin-bottom:6px; }
+  .overlay-card .big-score { font-family:'Fredoka',sans-serif; font-size:3.2rem; color:#ffd93d; }
+  .overlay-card p { color:var(--text-dim); margin:8px 0; font-size:.93rem; }
+  .overlay-card .btn-restart {
+    margin-top:22px; background:linear-gradient(135deg,#ffd93d,#ffb347);
+    color:#1a1a2e; border:none; border-radius:14px;
+    padding:13px 36px; font-size:1.05rem; font-weight:700;
+    font-family:'Nunito',sans-serif; cursor:pointer;
+    transition:filter .2s, transform .15s;
+  }
+  .overlay-card .btn-restart:hover { filter:brightness(1.1); transform:scale(1.04); }
+
+  /* ─── next-btn (shown briefly after answer) ─── */
+  .next-btn {
+    display:none; margin:18px auto 0; background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.25); color:#fff;
+    border-radius:14px; padding:10px 28px;
+    font-size:.95rem; font-weight:700; cursor:pointer;
+    font-family:'Nunito',sans-serif;
+    transition:background .2s;
+  }
+  .next-btn:hover { background:rgba(255,255,255,.2); }
+  .next-btn.show { display:block; }
+</style>
+</head>
+<body>
+
+<!-- stars bg -->
+<div class="stars" id="stars"></div>
+
+<!-- confetti canvas -->
+<canvas id="confetti"></canvas>
+
+<!-- HUD -->
+<div class="hud">
+  <div class="hud-left">
+    <div class="level-badge" id="levelBadge">Level 1</div>
+    <div class="streak-badge" id="streakBadge">🔥 ×1</div>
+  </div>
+  <div class="hud-right">
+    <div class="score-num" id="scoreNum">0 Punkte</div>
+    <div class="hearts" id="hearts"></div>
+  </div>
+</div>
+
+<!-- game area -->
+<div class="game-wrap">
+  <div class="sentence-card" style="position:relative;">
+    <div class="prompt-label">Welche Wortart ist das markierte Wort?</div>
+    <div class="sentence" id="sentence"></div>
+    <div class="question-text">Bestimme die Wortart von <strong id="targetWord">–</strong></div>
+    <div class="answers" id="answers"></div>
+    <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Weiter →</button>
+  </div>
+</div>
+
+<!-- mascot -->
+<div class="mascot-wrap" id="mascot">
+  <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    <!-- body -->
+    <ellipse cx="50" cy="85" rx="28" ry="32" fill="#4d96ff"/>
+    <!-- head -->
+    <circle cx="50" cy="42" r="26" fill="#4d96ff"/>
+    <!-- ears -->
+    <ellipse cx="30" cy="22" rx="7" ry="11" fill="#3a7bd5" transform="rotate(-15 30 22)"/>
+    <ellipse cx="70" cy="22" rx="7" ry="11" fill="#3a7bd5" transform="rotate(15 70 22)"/>
+    <!-- face bg -->
+    <ellipse cx="50" cy="48" rx="18" ry="14" fill="#fff" opacity=".15"/>
+    <!-- neutral eyes -->
+    <g class="eyes-neutral">
+      <circle cx="41" cy="44" r="3.5" fill="#fff"/>
+      <circle cx="59" cy="44" r="3.5" fill="#fff"/>
+      <circle cx="42" cy="44.5" r="1.8" fill="#1a1a2e"/>
+      <circle cx="60" cy="44.5" r="1.8" fill="#1a1a2e"/>
+    </g>
+    <!-- happy eyes -->
+    <g class="eyes-happy">
+      <path d="M38 43 Q41 40 44 43" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <path d="M56 43 Q59 40 62 43" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- sad eyes -->
+    <g class="eyes-sad">
+      <circle cx="41" cy="44" r="3.5" fill="#fff"/>
+      <circle cx="59" cy="44" r="3.5" fill="#fff"/>
+      <circle cx="41" cy="45" r="1.8" fill="#1a1a2e"/>
+      <circle cx="59" cy="45" r="1.8" fill="#1a1a2e"/>
+      <path d="M39 50 Q41 48 43 50" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <path d="M57 50 Q59 48 61 50" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- mouth (neutral) -->
+    <path class="mouth-neutral" d="M45 54 Q50 57 55 54" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".7"/>
+    <!-- arms -->
+    <line x1="24" y1="78" x2="10" y2="95" stroke="#3a7bd5" stroke-width="6" stroke-linecap="round"/>
+    <line x1="76" y1="78" x2="90" y2="95" stroke="#3a7bd5" stroke-width="6" stroke-linecap="round"/>
+    <!-- legs -->
+    <rect x="38" y="112" width="8" height="10" rx="4" fill="#3a7bd5"/>
+    <rect x="54" y="112" width="8" height="10" rx="4" fill="#3a7bd5"/>
+  </svg>
+</div>
+
+<!-- ground trees -->
+<div class="ground-deco">
+  <svg class="tree" style="left:6%;bottom:0;width:60px;" viewBox="0 0 60 90">
+    <rect class="tree-trunk" x="24" y="55" width="12" height="35"/>
+    <polygon class="tree-top" points="30,0 5,55 55,55"/>
+  </svg>
+  <svg class="tree" style="left:18%;bottom:0;width:42px;" viewBox="0 0 60 90">
+    <rect class="tree-trunk" x="24" y="55" width="12" height="35"/>
+    <polygon class="tree-top" points="30,5 8,55 52,55"/>
+  </svg>
+  <svg class="tree" style="right:10%;bottom:0;width:55px;" viewBox="0 0 60 90">
+    <rect class="tree-trunk" x="24" y="55" width="12" height="35"/>
+    <polygon class="tree-top" points="30,0 6,55 54,55"/>
+  </svg>
+  <svg class="tree" style="right:25%;bottom:0;width:38px;" viewBox="0 0 60 90">
+    <rect class="tree-trunk" x="24" y="55" width="12" height="35"/>
+    <polygon class="tree-top" points="30,8 10,55 50,55"/>
+  </svg>
+</div>
+
+<!-- game-over overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <h2 id="overlayTitle">Spiel vorbei!</h2>
+    <div class="big-score" id="overlayScore">0</div>
+    <p id="overlayMsg"></p>
+    <button class="btn-restart" onclick="restartGame()">Noch einmal 🎮</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  DATA  — aus Screenshot 1 (Wortschatz-Baum)
+// ════════════════════════════════════════════════
+const CATS = [
+  { id:'verb',  label:'Verb',       hint:'singen, haben …', icon:'🏃', color:'var(--c-verb)'  },
+  { id:'nomen', label:'Nomen',      hint:'Tisch, Wind …',   icon:'📦', color:'var(--c-nomen)' },
+  { id:'adj',   label:'Adjektiv',   hint:'schön, klein …',  icon:'🎨', color:'var(--c-adj)'   },
+  { id:'pron',  label:'Pronomen',   hint:'ich, der …',      icon:'👤', color:'var(--c-pron)'  },
+  { id:'part',  label:'Partikel',   hint:'heute, und …',    icon:'✨', color:'var(--c-part)'  }
+];
+
+// Sätze: { sentence (Array von Wörtern), targetIndex, correctCat }
+// Sentences intentionally use words from both screenshots
+const QUESTIONS = [
+  // ── Verben ──
+  { s:['Sie','singen','ein','schönes','Lied','.'],          ti:1, cat:'verb'  },
+  { s:['Wir','haben','viel','Zeit','.'],                     ti:1, cat:'verb'  },
+  { s:['Er','erfinder','eine','neue','Idee','.'],            ti:1, cat:'verb'  },
+  { s:['Es','regnet','heute','sehr','stark','.'],            ti:1, cat:'verb'  },
+  { s:['Du','malt','ein','großes','Bild','.'],               ti:1, cat:'verb'  },
+  { s:['Sie','tragen','neue','Schuhe','.'],                  ti:1, cat:'verb'  },
+  { s:['Ich','muss','aufpassen','.'],                        ti:2, cat:'verb'  },
+  { s:['Der','Junge','ist','sehr','schnell','.'],            ti:2, cat:'verb'  },
+  // ── Nomen ──
+  { s:['Der','Tisch','ist','alt','.'],                       ti:1, cat:'nomen' },
+  { s:['Ein','Gedanke','kam','mir','vor','.'],               ti:1, cat:'nomen' },
+  { s:['Der','Wind','bläst','stark','.'],                    ti:1, cat:'nomen' },
+  { s:['Sie','träumt','vom','Traum','.'],                    ti:3, cat:'nomen' },
+  { s:['Was','kostet','der','Preis','?'],                    ti:3, cat:'nomen' },
+  { s:['Meine','Tochter','lernt','Deutsch','.'],             ti:1, cat:'nomen' },
+  { s:['Das','Herz','schlägt','schnell','.'],                ti:1, cat:'nomen' },
+  { s:['Wir','gehen','in','die','Kirche','.'],               ti:4, cat:'nomen' },
+  // ── Adjektive ──
+  { s:['Die','Blume','ist','schön','.'],                     ti:3, cat:'adj'   },
+  { s:['Er','trägt','einen','blauen','Mantel','.'],          ti:3, cat:'adj'   },
+  { s:['Das','Messer','ist','silbern','und','glatt','.'],    ti:3, cat:'adj'   },
+  { s:['Sie','ist','sehr','freundlich','.'],                 ti:3, cat:'adj'   },
+  { s:['Die','Uhr','ist','genau','.'],                       ti:3, cat:'adj'   },
+  { s:['Das','Haus','ist','klein','.'],                      ti:3, cat:'adj'   },
+  { s:['Der','Arzt','ist','kritisch','.'],                   ti:3, cat:'adj'   },
+  { s:['Das','Essen','ist','gesund','.'],                    ti:3, cat:'adj'   },
+  // ── Pronomen ──
+  { s:['Ich','gehe','nach','Hause','.'],                     ti:0, cat:'pron'  },
+  { s:['Du','kommst','später','.'],                          ti:0, cat:'pron'  },
+  { s:['Man','kann','das','tun','.'],                        ti:0, cat:'pron'  },
+  { s:['Das','ist','mein','Buch','.'],                       ti:2, cat:'pron'  },
+  { s:['Sie','kennt','sich','gut','.'],                      ti:2, cat:'pron'  },
+  { s:['Wer','kommt','morgen','?'],                          ti:0, cat:'pron'  },
+  { s:['Was','willst','du','essen','?'],                     ti:0, cat:'pron'  },
+  { s:['Der','Kerl','ist','nett','.'],                       ti:0, cat:'pron'  },
+  { s:['Einige','kommen','nicht','.'],                       ti:0, cat:'pron'  },
+  { s:['Niemand','weiß','das','.'],                          ti:0, cat:'pron'  },
+  // ── Partikeln ──
+  { s:['Sie','kommt','heute','nach','.'],                    ti:2, cat:'part'  },
+  { s:['Er','ist','dort','draußen','.'],                     ti:2, cat:'part'  },
+  { s:['Wir','gehen','am','Montag','.'],                     ti:2, cat:'part'  },
+  { s:['Sie','fahrt','zum','Laden','.'],                     ti:2, cat:'part'  },
+  { s:['Ich','und','du','gehen','weg','.'],                  ti:1, cat:'part'  },
+  { s:['Er','kommt',',','dass','er','müde','ist','.'],       ti:3, cat:'part'  },
+  { s:['Sie','lernt',',','weil','es','Spaß','macht','.'],   ti:3, cat:'part'  },
+  { s:['Ach',',','das','ist','süß','.'],                     ti:0, cat:'part'  },
+];
+
+// ════════════════════════════════════════════════
+//  GAME STATE
+// ════════════════════════════════════════════════
+const MAX_LIVES = 3;
+let lives, score, streak, level, questionQueue, currentQ, answered;
+
+function shuffle(a){ return a.sort(()=>Math.random()-.5); }
+
+function initState(){
+  lives   = MAX_LIVES;
+  score   = 0;
+  streak  = 0;
+  level   = 1;
+  answered= false;
+  questionQueue = shuffle([...QUESTIONS]);
+  currentQ = null;
+}
+
+// ════════════════════════════════════════════════
+//  RENDER HUD
+// ════════════════════════════════════════════════
+function renderHud(){
+  document.getElementById('scoreNum').textContent = score + ' Punkte';
+  document.getElementById('levelBadge').textContent = 'Level ' + level;
+
+  // hearts
+  const hc = document.getElementById('hearts');
+  hc.innerHTML = '';
+  for(let i=0;i<MAX_LIVES;i++){
+    const h = document.createElement('span');
+    h.className = 'heart' + (i >= lives ? ' lost' : '');
+    h.textContent = '❤️';
+    hc.appendChild(h);
+  }
+
+  // streak
+  const sb = document.getElementById('streakBadge');
+  if(streak >= 2){ sb.textContent = '🔥 ×'+streak; sb.classList.add('show'); }
+  else            { sb.classList.remove('show'); }
+}
+
+// ════════════════════════════════════════════════
+//  RENDER QUESTION
+// ════════════════════════════════════════════════
+function nextQuestion(){
+  if(questionQueue.length === 0){
+    questionQueue = shuffle([...QUESTIONS]);
+  }
+  currentQ = questionQueue.shift();
+  answered = false;
+  document.getElementById('nextBtn').classList.remove('show');
+  setMascot('neutral');
+
+  // sentence
+  const sentDiv = document.getElementById('sentence');
+  sentDiv.innerHTML = '';
+  currentQ.s.forEach((w,i)=>{
+    const span = document.createElement('span');
+    span.className = 'w' + (i === currentQ.ti ? ' target' : '');
+    span.textContent = w;
+    sentDiv.appendChild(span);
+    if(i < currentQ.s.length-1) sentDiv.appendChild(document.createTextNode(' '));
+  });
+
+  document.getElementById('targetWord').textContent = currentQ.s[currentQ.ti];
+
+  // answers — always show correct + 3 random others
+  const others = CATS.filter(c=> c.id !== currentQ.cat);
+  const wrong  = shuffle(others).slice(0,3);
+  const options= shuffle([CATS.find(c=>c.id===currentQ.cat), ...wrong]);
+
+  const ansDiv = document.getElementById('answers');
+  ansDiv.innerHTML = '';
+  options.forEach(cat=>{
+    const btn = document.createElement('button');
+    btn.className = 'ans-btn';
+    btn.dataset.catId = cat.id;
+    btn.innerHTML = `
+      <div class="cat-icon" style="background:${cat.color}33; border:2px solid ${cat.color}">${cat.icon}</div>
+      <div class="cat-label">
+        <div class="cat-name">${cat.label}</div>
+        <div class="cat-hint">${cat.hint}</div>
+      </div>`;
+    btn.addEventListener('click', ()=> handleAnswer(cat.id, btn));
+    ansDiv.appendChild(btn);
+  });
+}
+
+// ════════════════════════════════════════════════
+//  ANSWER LOGIC
+// ════════════════════════════════════════════════
+function handleAnswer(chosenCat, btn){
+  if(answered) return;
+  answered = true;
+  const correct = (chosenCat === currentQ.cat);
+
+  // disable all
+  document.querySelectorAll('.ans-btn').forEach(b=>b.classList.add('disabled'));
+
+  if(correct){
+    btn.classList.add('correct');
+    streak++;
+    const bonus = streak >= 3 ? 2 : 1;   // streak bonus ×2 ab 3
+    score += 10 * bonus;
+    showFeedback(streak>=3 ? '🔥 +'+( 10*bonus) : '+10', 'good');
+    if(streak >= 3) launchConfetti();
+    setMascot('happy');
+    // level up alle 50 Punkte
+    const newLvl = Math.floor(score/50)+1;
+    if(newLvl > level){ level = newLvl; }
+  } else {
+    btn.classList.add('wrong');
+    // highlight correct
+    document.querySelectorAll('.ans-btn').forEach(b=>{
+      if(b.dataset.catId === currentQ.cat){ b.classList.add('reveal'); b.classList.remove('disabled'); }
+    });
+    streak = 0;
+    lives--;
+    showFeedback('−', 'bad');
+    setMascot('sad');
+    if(lives <= 0){ setTimeout(gameOver, 900); renderHud(); return; }
+  }
+
+  renderHud();
+  document.getElementById('nextBtn').classList.add('show');
+}
+
+// ════════════════════════════════════════════════
+//  FEEDBACK TEXT
+// ════════════════════════════════════════════════
+function showFeedback(txt, cls){
+  const card = document.querySelector('.sentence-card');
+  const fb   = document.createElement('div');
+  fb.className = 'feedback ' + cls;
+  fb.textContent = txt;
+  card.appendChild(fb);
+  setTimeout(()=>fb.remove(), 750);
+}
+
+// ════════════════════════════════════════════════
+//  MASCOT
+// ════════════════════════════════════════════════
+function setMascot(state){
+  const m = document.getElementById('mascot');
+  m.classList.remove('happy','sad');
+  if(state !== 'neutral') m.classList.add(state);
+}
+
+// ════════════════════════════════════════════════
+//  GAME OVER
+// ════════════════════════════════════════════════
+function gameOver(){
+  document.getElementById('overlayScore').textContent = score;
+  let msg = '';
+  if(score >= 120) msg = '🌟 Wunderbar! Du bist ein Wortarten-Profi!';
+  else if(score >= 60) msg = '👍 Gute Arbeit – noch ein bisschen üben!';
+  else msg = '😄 Lass dich nicht entmutigen, probier es noch einmal!';
+  document.getElementById('overlayMsg').textContent = msg;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function restartGame(){
+  document.getElementById('overlay').classList.remove('show');
+  initState();
+  renderHud();
+  nextQuestion();
+}
+
+// ════════════════════════════════════════════════
+//  CONFETTI
+// ════════════════════════════════════════════════
+(function(){
+  const canvas = document.getElementById('confetti');
+  const ctx    = canvas.getContext('2d');
+  let particles = [], animId = null;
+
+  function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+  window.addEventListener('resize', resize); resize();
+
+  class Particle {
+    constructor(){
+      this.x = canvas.width * Math.random();
+      this.y = -12;
+      this.vx = (Math.random()-0.5)*6;
+      this.vy = Math.random()*4+2;
+      this.color = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff9f43'][Math.floor(Math.random()*6)];
+      this.size = Math.random()*6+4;
+      this.spin = Math.random()*Math.PI*2;
+      this.spinV = (Math.random()-0.5)*0.4;
+      this.life = 1;
+    }
+    update(){
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vy += 0.08;
+      this.spin += this.spinV;
+      this.life -= 0.015;
+    }
+    draw(){
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.spin);
+      ctx.globalAlpha = this.life;
+      ctx.fillStyle = this.color;
+      ctx.fillRect(-this.size/2, -this.size/3, this.size, this.size*.6);
+      ctx.restore();
+    }
+  }
+
+  function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles = particles.filter(p=>p.life>0);
+    particles.forEach(p=>{ p.update(); p.draw(); });
+    if(particles.length) animId = requestAnimationFrame(loop);
+  }
+
+  window.launchConfetti = function(){
+    for(let i=0;i<60;i++) particles.push(new Particle());
+    if(animId===null) loop();
+  };
+})();
+
+// ════════════════════════════════════════════════
+//  AMBIENT: stars & clouds
+// ════════════════════════════════════════════════
+(function(){
+  const sc = document.getElementById('stars');
+  for(let i=0;i<70;i++){
+    const s = document.createElement('div');
+    s.className='star';
+    const sz = Math.random()*2.5+1;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*50}%;left:${Math.random()*100}%;opacity:${Math.random()*.8+.2};--dur:${Math.random()*2+1.5}s`;
+    sc.appendChild(s);
+  }
+  // clouds
+  for(let i=0;i<4;i++){
+    const c = document.createElement('div');
+    c.className='cloud';
+    const h = Math.random()*60+30;
+    c.style.cssText = `top:${Math.random()*40+5}%;height:${h}px;width:${h*2.8}px;--spd:${Math.random()*30+25}s;animation-delay:-${Math.random()*20}s`;
+    document.body.appendChild(c);
+  }
+})();
+
+// ════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════
+initState();
+renderHud();
+nextQuestion();
+</script>
+</body>
+</html>
